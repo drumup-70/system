@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import os
+import datetime
 
 # 設定資料檔案路徑
 DATA_FILE = "studio_data.json"
@@ -30,11 +31,22 @@ if menu == "總覽":
 
 elif menu == "快速簽到":
     st.subheader("今日簽到")
-    student_name = st.text_input("輸入學員姓名")
-    if st.button("確認簽到"):
-        if student_name in students:
-            students[student_name]["history"].append("2026-06-20")
+    
+    if students:
+        # 將手動輸入改為「下拉式選單」
+        student_list = list(students.keys())
+        student_name = st.selectbox("請選擇學員", student_list)
+        
+        if st.button("確認簽到"):
+            # 防呆機制：確保該學員有 history 欄位可以存紀錄
+            if "history" not in students[student_name]:
+                students[student_name]["history"] = []
+                
+            # 自動抓取今天的日期
+            today = datetime.date.today().strftime("%Y-%m-%d")
+            students[student_name]["history"].append(today)
+            
             save_data(students)
-            st.success(f"已成功記錄 {student_name} 的簽到！")
-        else:
-            st.error("找不到該學員")
+            st.success(f"✅ 已成功記錄 {student_name} 的簽到！(目前共 {len(students[student_name]['history'])} 堂)")
+    else:
+        st.warning("目前系統中沒有學員資料。") 
