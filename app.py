@@ -11,7 +11,7 @@ creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"],
 client = gspread.authorize(creds)
 
 # 2. 開啟指定試算表 (請確保名稱與你的 Google 試算表完全一致)
-SPREADSHEET_NAME = "工作室管理系統"
+SPREADSHEET_NAME = "Drum Up Studio管理系統"
 try:
     sheet = client.open(SPREADSHEET_NAME).worksheet("登載紀錄")
 except Exception as e:
