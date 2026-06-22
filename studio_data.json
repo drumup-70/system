@@ -1,0 +1,139 @@
+{
+    "Eric": {
+        "classes": 2,
+        "rate": 700,
+        "total_cost": 1400,
+        "total_paid": 1400,
+        "history": [
+            "2026-06-04: +1 堂",
+            "2026-06-19: +1 堂"
+        ],
+        "pay_history": [],
+        "last_pay_date": "未繳費"
+    },
+    "Marurice": {
+        "classes": 3,
+        "rate": 700,
+        "total_cost": 2100,
+        "total_paid": 2100,
+        "history": [
+            "2026-06-04: +1 堂",
+            "2026-06-11: +1 堂",
+            "2026-06-19: +1 堂"
+        ],
+        "pay_history": [],
+        "last_pay_date": "未繳費"
+    },
+    "李知庭": {
+        "classes": 3,
+        "rate": 700,
+        "total_cost": 2100,
+        "total_paid": 2100,
+        "history": [
+            "2026-06-04: +1 堂",
+            "2026-06-11: +1 堂",
+            "2026-06-19: +1 堂"
+        ],
+        "pay_history": [],
+        "last_pay_date": "未繳費"
+    },
+    "林劭貞": {
+        "classes": 3,
+        "rate": 700,
+        "total_cost": 2100,
+        "total_paid": 2100,
+        "history": [
+            "2026-06-03: +1 堂",
+            "2026-06-10: +1 堂",
+            "2026-06-18: +1 堂"
+        ],
+        "pay_history": [],
+        "last_pay_date": "未繳費"
+    },
+    "黃允麗": {
+        "classes": 3,
+        "rate": 700,
+        "total_cost": 2100,
+        "total_paid": 2100,
+        "history": [
+            "2026-06-03: +1 堂",
+            "2026-06-10: +1 堂",
+            "2026-06-18: +1 堂"
+        ],
+        "pay_history": [],
+        "last_pay_date": "未繳費"
+    },
+    "吳若瑀": {
+        "classes": 2,
+        "rate": 700,
+        "total_cost": 1400,
+        "total_paid": 1400,
+        "history": [
+            "2026-06-02: +1 堂",
+            "2026-06-17: +1 堂"
+        ],
+        "pay_history": [],
+        "last_pay_date": "未繳費"
+    },
+    "李雨蕎": {
+        "classes": 1,
+        "rate": 750,
+        "total_cost": 750,
+        "total_paid": 750,
+        "history": [
+            "2026-06-15: +1 堂"
+        ],
+        "pay_history": [],
+        "last_pay_date": "未繳費"
+    },
+    "豬豬": {
+        "classes": 3,
+        "rate": 500,
+        "total_cost": 1500,
+        "total_paid": 1000,
+        "history": [
+            "2026-06-07: +1 堂",
+            "2026-06-15: +1 堂",
+            "2026-06-21: 上課 +1 堂"
+        ],
+        "pay_history": [],
+        "last_pay_date": "未繳費"
+    },
+    "楊秉睿": {
+        "classes": 2,
+        "rate": 700,
+        "total_cost": 1400,
+        "total_paid": 1400,
+        "history": [
+            "2026-06-03: +1 堂",
+            "2026-06-17: +1 堂"
+        ],
+        "pay_history": [],
+        "last_pay_date": "未繳費"
+    },
+    "林伯駿": {
+        "classes": 3,
+        "rate": 700,
+        "total_cost": 2100,
+        "total_paid": 2100,
+        "history": [
+            "2026-06-03: +1 堂",
+            "2026-06-10: +1 堂",
+            "2026-06-17: +1 堂"
+        ],
+        "pay_history": [],
+        "last_pay_date": "未繳費"
+    },
+    "Kevin": {
+        "classes": 2,
+        "rate": 700,
+        "total_cost": 1400,
+        "total_paid": 1400,
+        "history": [
+            "2026-06-02: +1 堂",
+            "2026-06-19: +1 堂"
+        ],
+        "pay_history": [],
+        "last_pay_date": "未繳費"
+    }
+}
