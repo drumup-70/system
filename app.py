@@ -4,66 +4,77 @@ import gspread
 import pandas as pd
 import datetime
 import time
+import json
 
-# 1. 串接 Google Sheets 認證
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=SCOPES)
 client = gspread.authorize(creds)
 
-# 2. 🚀 終極連線法：直接使用網址 (避開檔名搜尋的錯誤)
-# 👇👇👇 請把下面引號裡面的中文，換成你真實的 Google 試算表網址！ 👇👇👇
+# 👇👇👇 請將引號內的文字替換成你真實的 Google 試算表網址 👇👇👇
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1e6l3j6LoZ_-C5zDfBAmP454h4dM2DUFfUlq7UHPSD4U/edit?gid=0#gid=0"
+WORKSHEET_NAME = "系統資料庫"
 
 try:
-    sheet = client.open_by_url(SHEET_URL).worksheet("登載紀錄")
+    sh = client.open_by_url(SHEET_URL)
+    try:
+        sheet = sh.worksheet(WORKSHEET_NAME)
+    except gspread.exceptions.WorksheetNotFound:
+        sheet = sh.add_worksheet(title=WORKSHEET_NAME, rows="100", cols="5")
 except Exception as e:
-    # 這次我把系統真實的錯誤代碼 (e) 顯示出來，如果還失敗，我們就能精準抓漏！
-    st.error(f"無法連動！請確認「共用」有設定，且分頁叫「登載紀錄」。\n\n系統除錯代碼: {e}")
+    st.error(f"無法連動！請確認網址與共用設定。\n\n系統除錯代碼: {e}")
     st.stop()
 
 st.set_page_config(page_title="工作室統計系統", layout="centered")
-st.title("📊 工作室管理系統 (雲端同步版)")
+st.title("📊 工作室管理系統 (雙向同步版)")
 
-# 讀取目前所有的簽到紀錄
-records = sheet.get_all_records()
-df = pd.DataFrame(records)
+# 讀取並解析 JSON 資料庫
+records = sheet.get_all_values()
+students = {}
+for row in records:
+    if len(row) >= 2:
+        try:
+            students[row[0]] = json.loads(row[1])
+        except:
+            pass
 
-# 預設學員名單
 DEFAULT_STUDENTS = ["Eric", "Marurice", "李知庭", "林劭貞", "黃允麗", "吳若瑀", "李雨蕎", "豬豬", "楊秉睿", "林伯駿", "Kevin"]
 
-# 計算每位學員的總堂數
-student_counts = {}
-for name in DEFAULT_STUDENTS:
-    if not df.empty and "姓名" in df.columns:
-        count = len(df[df["姓名"] == name])
-    else:
-        count = 0
-    student_counts[name] = count
-
-# 建立功能頁籤
 tab1, tab2 = st.tabs(["📋 總覽", "✅ 快速簽到"])
 
-# ---------- 第一頁：總覽 ----------
 with tab1:
     st.subheader("學員列表")
-    for name, count in student_counts.items():
-        st.write(f"**{name}**: 已上 {count} 堂")
+    if not students:
+        st.write("目前雲端尚無資料，請先從電腦版輸入學生資料，或由下方簽到建立新檔。")
+    else:
+        for name, data in students.items():
+            classes = data.get("classes", 0)
+            balance = data.get("total_cost", 0) - data.get("total_paid", 0)
+            status = f"🔴欠費 {balance}元" if balance > 0 else "🟢結清"
+            st.write(f"**{name}**: 已上 {classes} 堂 | {status}")
 
-# ---------- 第二頁：快速簽到 ----------
 with tab2:
     st.subheader("今日簽到")
-    
-    student_name = st.selectbox("請選擇學員", DEFAULT_STUDENTS)
+    student_list = list(students.keys()) if students else DEFAULT_STUDENTS
+    student_name = st.selectbox("請選擇學員", student_list)
     
     if st.button("確認簽到"):
         today = datetime.date.today().strftime("%Y-%m-%d")
-        sheet.append_row([today, student_name])
         
-        st.success(f"✅ 已成功記錄 {student_name} 的簽到！已同步至 Google 雲端。")
+        # 若為新紀錄則初始化
+        if student_name not in students:
+            students[student_name] = {"classes": 0, "rate": 0, "total_cost": 0, "total_paid": 0, "history": [], "pay_history": [], "last_pay_date": "未繳費"}
+            
+        # 同步更新邏輯
+        students[student_name]["classes"] += 1
+        students[student_name]["total_cost"] += students[student_name].get("rate", 0)
+        students[student_name]["history"].append(f"{today}: 上課 +1 堂")
+        
+        # 寫回試算表
+        cell_values = [[name, json.dumps(info, ensure_ascii=False)] for name, info in students.items()]
+        sheet.clear()
+        sheet.update(range_name='A1', values=cell_values)
+        
+        st.success(f"✅ 已成功記錄 {student_name} 的簽到！已與電腦版完美同步。")
         st.info("網頁將在 2 秒後自動重新整理...")
-        
         time.sleep(2)
         st.rerun()
