@@ -1,52 +1,69 @@
 import streamlit as st
-import json
-import os
+from google.oauth2.service_account import Credentials
+import gspread
+import pandas as pd
 import datetime
+import time
 
-# 設定資料檔案路徑
-DATA_FILE = "studio_data.json"
+# 1. 串接 Google Sheets 認證
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=SCOPES)
+client = gspread.authorize(creds)
 
-def load_data():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
+# 2. 開啟指定試算表 (請確保名稱與你的 Google 試算表完全一致)
+SPREADSHEET_NAME = "工作室管理系統"
+try:
+    sheet = client.open(SPREADSHEET_NAME).worksheet("登載紀錄")
+except Exception as e:
+    st.error(f"無法連動試算表，請確認試算表名稱是否為 '{SPREADSHEET_NAME}'，且已共用權限給服務帳戶。")
+    st.stop()
 
 st.set_page_config(page_title="工作室統計系統", layout="centered")
-st.title("📊 工作室管理系統 (手機版)")
+st.title("📊 工作室管理系統 (雲端同步版)")
 
-students = load_data()
+# 讀取目前所有的簽到紀錄
+records = sheet.get_all_records()
+df = pd.DataFrame(records)
 
-# 頁面選單
-menu = st.sidebar.selectbox("功能選單", ["總覽", "快速簽到"])
+# 你的專屬學員名單
+DEFAULT_STUDENTS = ["Eric", "Marurice", "李知庭", "林劭貞", "黃允麗", "吳若瑀", "李雨蕎", "豬豬", "楊秉睿", "林伯駿", "Kevin"]
 
-if menu == "總覽":
+# 計算每位學員的總堂數
+student_counts = {}
+for name in DEFAULT_STUDENTS:
+    if not df.empty and "姓名" in df.columns:
+        # 計算該姓名在試算表中出現的次數
+        count = len(df[df["姓名"] == name])
+    else:
+        count = 0
+    student_counts[name] = count
+
+# 建立功能頁籤，手機操作更直覺
+tab1, tab2 = st.tabs(["📋 總覽", "✅ 快速簽到"])
+
+# ---------- 第一頁：總覽 ----------
+with tab1:
     st.subheader("學員列表")
-    for name, data in students.items():
-        st.write(f"**{name}**: 已上 {len(data.get('history', []))} 堂")
+    for name, count in student_counts.items():
+        st.write(f"**{name}**: 已上 {count} 堂")
 
-elif menu == "快速簽到":
+# ---------- 第二頁：快速簽到 ----------
+with tab2:
     st.subheader("今日簽到")
     
-    if students:
-        # 將手動輸入改為「下拉式選單」
-        student_list = list(students.keys())
-        student_name = st.selectbox("請選擇學員", student_list)
+    # 下拉式選單選擇學員
+    student_name = st.selectbox("請選擇學員", DEFAULT_STUDENTS)
+    
+    if st.button("確認簽到"):
+        # 取得今天日期
+        today = datetime.date.today().strftime("%Y-%m-%d")
         
-        if st.button("確認簽到"):
-            # 防呆機制：確保該學員有 history 欄位可以存紀錄
-            if "history" not in students[student_name]:
-                students[student_name]["history"] = []
-                
-            # 自動抓取今天的日期
-            today = datetime.date.today().strftime("%Y-%m-%d")
-            students[student_name]["history"].append(today)
-            
-            save_data(students)
-            st.success(f"✅ 已成功記錄 {student_name} 的簽到！(目前共 {len(students[student_name]['history'])} 堂)")
-    else:
-        st.warning("目前系統中沒有學員資料。") 
+        # 將新紀錄直接附加寫入到 Google 試算表的最後一行
+        sheet.append_row([today, student_name])
+        
+        st.success(f"✅ 已成功記錄 {student_name} 的簽到！系統已同步寫入雲端試算表。")
+        st.info("網頁將在 2 秒後自動重新整理...")
+        
+        # 延遲後重整頁面以更新堂數
+        time.sleep(2)
+        st.rerun()
