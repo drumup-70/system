@@ -6,16 +6,22 @@ import datetime
 import time
 
 # 1. 串接 Google Sheets 認證
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=SCOPES)
 client = gspread.authorize(creds)
 
-# 2. 開啟指定試算表 (請確保名稱與你的 Google 試算表完全一致)
-SPREADSHEET_NAME = "DrumUpStudio管理系統"
+# 2. 🚀 終極連線法：直接使用網址 (避開檔名搜尋的錯誤)
+# 👇👇👇 請把下面引號裡面的中文，換成你真實的 Google 試算表網址！ 👇👇👇
+SHEET_URL = "https://docs.google.com/spreadsheets/d/1e6l3j6LoZ_-C5zDfBAmP454h4dM2DUFfUlq7UHPSD4U/edit?gid=0#gid=0"
+
 try:
-    sheet = client.open(SPREADSHEET_NAME).worksheet("登載紀錄")
+    sheet = client.open_by_url(SHEET_URL).worksheet("登載紀錄")
 except Exception as e:
-    st.error(f"無法連動試算表，請確認試算表名稱是否為 '{SPREADSHEET_NAME}'，且已共用權限給服務帳戶。")
+    # 這次我把系統真實的錯誤代碼 (e) 顯示出來，如果還失敗，我們就能精準抓漏！
+    st.error(f"無法連動！請確認「共用」有設定，且分頁叫「登載紀錄」。\n\n系統除錯代碼: {e}")
     st.stop()
 
 st.set_page_config(page_title="工作室統計系統", layout="centered")
@@ -25,20 +31,19 @@ st.title("📊 工作室管理系統 (雲端同步版)")
 records = sheet.get_all_records()
 df = pd.DataFrame(records)
 
-# 你的專屬學員名單
+# 預設學員名單
 DEFAULT_STUDENTS = ["Eric", "Marurice", "李知庭", "林劭貞", "黃允麗", "吳若瑀", "李雨蕎", "豬豬", "楊秉睿", "林伯駿", "Kevin"]
 
 # 計算每位學員的總堂數
 student_counts = {}
 for name in DEFAULT_STUDENTS:
     if not df.empty and "姓名" in df.columns:
-        # 計算該姓名在試算表中出現的次數
         count = len(df[df["姓名"] == name])
     else:
         count = 0
     student_counts[name] = count
 
-# 建立功能頁籤，手機操作更直覺
+# 建立功能頁籤
 tab1, tab2 = st.tabs(["📋 總覽", "✅ 快速簽到"])
 
 # ---------- 第一頁：總覽 ----------
@@ -51,19 +56,14 @@ with tab1:
 with tab2:
     st.subheader("今日簽到")
     
-    # 下拉式選單選擇學員
     student_name = st.selectbox("請選擇學員", DEFAULT_STUDENTS)
     
     if st.button("確認簽到"):
-        # 取得今天日期
         today = datetime.date.today().strftime("%Y-%m-%d")
-        
-        # 將新紀錄直接附加寫入到 Google 試算表的最後一行
         sheet.append_row([today, student_name])
         
-        st.success(f"✅ 已成功記錄 {student_name} 的簽到！系統已同步寫入雲端試算表。")
+        st.success(f"✅ 已成功記錄 {student_name} 的簽到！已同步至 Google 雲端。")
         st.info("網頁將在 2 秒後自動重新整理...")
         
-        # 延遲後重整頁面以更新堂數
         time.sleep(2)
         st.rerun()
