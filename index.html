@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drum Up 打卡</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+:root{
+  --bg:#F7F6F3; --card:#FFFFFF; --ink:#211A1D; --muted:#6B6064; --line:#E2DDDA;
+  --accent:#8A1E2C; --brass:#B8892E; --brass-soft:#F5ECD6; --warn:#B4441C;
+  --font:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --num:"Barlow Condensed","Arial Narrow",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#1B1618; --card:#2A2326; --ink:#F0EBE9; --muted:#A79CA0; --line:#3A3034;
+  --accent:#D04A5A; --brass:#D9AE55; --brass-soft:#3A2F1C; --warn:#F08A5D; color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.55;
+  padding:calc(16px + env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px))}
+.bar{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.05rem;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.dot{width:20px;height:20px;border-radius:50%;border:4px solid var(--accent);box-shadow:0 0 0 2px var(--brass)}
+main{max-width:420px;margin:0 auto;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding-top:28px}
+.loc{display:inline-block;background:var(--brass-soft);color:var(--brass);font-weight:700;font-size:.9rem;border-radius:999px;padding:3px 14px}
+.who{font-weight:900;font-size:1.5rem;margin:0}
+.sub{color:var(--muted);font-size:.95rem;margin:0}
+.big{font-family:var(--num);font-size:5.4rem;line-height:1;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.big.last{font-family:var(--font);font-size:2rem;font-weight:900;line-height:1.3}
+.greet{font-size:1.1rem;font-weight:500;max-width:300px;margin:6px 0 4px;color:var(--ink)}
+.hist{width:100%;max-width:300px;margin-top:10px;text-align:left;font-size:.88rem;color:var(--muted)}
+.hist h2{font-size:.88rem;font-weight:700;margin:0 0 4px;color:var(--ink)}
+.hist div{display:flex;justify-content:space-between;padding:5px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.pay{font-size:.86rem;color:var(--muted);margin:6px 0 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;width:100%;text-align:left}
+.card h1{font-size:1.2rem;margin:0 0 6px}
+.card label{display:block;font-size:.9rem;color:var(--muted);margin:14px 0 6px}
+.card input{width:100%;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font:inherit;color:inherit;font-size:1.05rem}
+.btn{width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:var(--accent);color:#fff;font:inherit;font-weight:700;font-size:1.05rem}
+.btn:disabled{opacity:.5}
+.err{color:var(--warn);font-size:.92rem;margin:10px 0 0;min-height:1.2em}
+.spin{width:44px;height:44px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--accent);animation:sp 1s linear infinite;margin-top:40px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.pop{animation:pop .45s ease-out}
+@keyframes pop{0%{transform:scale(.88);opacity:0}100%{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.pop,.spin{animation:none}}
+</style>
+</head>
+<body>
+<div class="bar"><span class="dot" aria-hidden="true"></span>Drum Up Studio 打卡</div>
+<main id="app" aria-live="polite"><div class="spin" aria-label="載入中"></div><p class="sub">打卡中…</p></main>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+// ====== 設定（只需要改這兩行）======
+const LIFF_ID = '2012512325-UWgznr15';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyPX1r_bQgN-bE5T6XwmMNYbTMC3Ql9qO4TmClIoZvwb9I6wK0XxEuQm4kd8EG-YbVn/exec';
+// ==================================
+
+const LOC_NAMES = { shilin: '士林教室', yongchun: '永春教室' };
+const app = document.getElementById('app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function getParam(key) {
+  const p = new URLSearchParams(location.search);
+  if (p.get(key)) return p.get(key);
+  const st = p.get('liff.state');
+  if (st) {
+    const q = st.includes('?') ? st.slice(st.indexOf('?')) : '';
+    return new URLSearchParams(q).get(key) || '';
+  }
+  return '';
+}
+const getLoc = () => getParam('loc');
+let isQuery = false;
+
+function show(html) {
+  app.innerHTML = html;
+  app.classList.remove('pop'); void app.offsetWidth; app.classList.add('pop');
+}
+function loading(t) { app.innerHTML = `<div class="spin" aria-label="載入中"></div><p class="sub">${esc(t)}</p>`; }
+function fail(msg) {
+  show(`<p class="who">${isQuery ? '查詢失敗' : '沒有打卡成功'}</p><p class="sub">${esc(msg)}</p><button class="btn" onclick="location.reload()">${isQuery ? '重新查詢' : '重新打卡'}</button>`);
+}
+
+async function call(body) {
+  const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(body) });
+  if (!res.ok) throw new Error('連線失敗，請稍後再試');
+  return res.json();
+}
+
+let loc = '';
+
+async function start() {
+  loc = getLoc();
+  isQuery = getParam('view') === 'history';
+  try {
+    await liff.init({ liffId: LIFF_ID });
+  } catch (e) { fail('LINE 初始化失敗，請關閉頁面後重新掃描 QR Code（錯誤代碼：' + ((e && (e.code || e.name)) || '') + ' ' + ((e && e.message) || '') + '）'); return; }
+  if (!liff.isLoggedIn()) { liff.login({ redirectUri: location.href }); return; }
+  loc = loc || getLoc();
+  isQuery = isQuery || getParam('view') === 'history';
+  if (isQuery) { await send({ action: 'query' }); return; }
+  if (!LOC_NAMES[loc]) { fail('這個 QR Code 沒有標示教室，請找老師確認'); return; }
+  await send({ action: 'checkin' });
+}
+
+async function send(extra) {
+  loading(isQuery ? '查詢中…' : '打卡中…');
+  let r;
+  try {
+    r = await call(Object.assign({ idToken: liff.getIDToken(), loc }, extra));
+  } catch (e) { fail(e.message || '連線失敗，請稍後再試'); return; }
+  render(r);
+}
+
+function render(r) {
+  if (r.status === 'error') return fail(r.message);
+  if (r.status === 'needBind' || r.status === 'bindFail') return bindForm(r);
+  const hist = (r.history || []).slice().reverse()
+    .map(h => `<div><span>第 ${esc(h.lesson)} 堂</span><span>${esc(h.date)} ${esc(h.loc)}</span></div>`).join('');
+  const histBlock = hist ? `<div class="hist"><h2>這期的上課紀錄</h2>${hist}</div>` : '';
+  const pay = r.lastPay ? `<p class="pay">最近繳費 ${esc(r.lastPay.date)}，${esc(r.lastPay.lessons)} 堂${r.lastPay.amount ? '，$' + Number(r.lastPay.amount).toLocaleString('en-US') : ''}</p>` : '';
+  const locChip = `<span class="loc">${esc(r.loc)}教室</span>`;
+
+  if (r.status === 'query') {
+    const big = r.total > 0 && r.lesson > r.total
+      ? `<div class="big">第 ${esc(r.lesson)} 堂</div><p class="sub">已超過本期 ${esc(r.total)} 堂</p>`
+      : `<div class="big">${esc(r.lesson)}<span style="font-size:2.4rem;color:var(--muted)"> / ${esc(r.total)}</span></div><p class="sub">這期已上的堂數</p>`;
+    show(`<span class="loc">我的上課紀錄</span><p class="who">${esc(r.name)}</p>${big}
+      ${histBlock || '<p class="sub">這期還沒有上課紀錄</p>'}${pay}`);
+    return;
+  }
+
+  if (r.status === 'already') {
+    show(`${locChip}<p class="who">${esc(r.name)}</p><p class="sub">今天已經打過卡了</p>
+      <p class="sub">這是這期的第 ${esc(r.lesson)} 堂課</p>${histBlock}${pay}`);
+    return;
+  }
+  const main = r.isLast
+    ? `<div class="big last">這期的最後一堂課</div>`
+    : `<p class="sub">這是這期的</p><div class="big">第 ${esc(r.lesson)} 堂</div>`;
+  show(`${locChip}<p class="who">${esc(r.name)}</p>${main}
+    <p class="sub">打卡完成</p>
+    ${r.greeting ? `<div class="greet">${esc(r.greeting)}</div>` : ''}
+    ${histBlock}${pay}`);
+}
+
+function bindForm(r) {
+  show(`<div class="card">
+    <h1>${isQuery ? '第一次使用' : '第一次打卡'}</h1>
+    <p class="sub">請輸入你在 Drum Up 登記的名字，${isQuery ? '之後就能直接查詢上課紀錄。' : '之後掃描就會直接打卡。'}</p>
+    <label for="nm">你的名字</label>
+    <input id="nm" autocomplete="name" maxlength="20">
+    <p class="err" id="err">${r.status === 'bindFail' ? esc(r.message) : ''}</p>
+    <button class="btn" id="go">${isQuery ? '確認並查詢' : '確認並打卡'}</button>
+  </div>`);
+  const nm = document.getElementById('nm'), go = document.getElementById('go');
+  nm.focus();
+  const submit = () => {
+    const name = nm.value.trim();
+    if (!name) { document.getElementById('err').textContent = '請輸入你的名字'; return; }
+    go.disabled = true;
+    send({ action: 'bind', name, mode: isQuery ? 'query' : 'checkin' });
+  };
+  go.onclick = submit;
+  nm.onkeydown = e => { if (e.key === 'Enter') submit(); };
+}
+
+start();
+</script>
+</body>
+</html>
